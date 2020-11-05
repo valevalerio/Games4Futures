@@ -8,17 +8,21 @@ public class GrowTrees : MonoBehaviour
     public float GrowSpeed = 30;
     public float startingCo2Value = 2;
     public float Co2value = 0;
-    
+    private float Radius=50f;
+    public float FallingSpeed = 3f;
     public Camera GOCamera;
     // modelli standard
     public List<GameObject> Trees;
     //modelli già istanziati
     public List<GameObject> TreesInstaciated;
-  
-    
+
+    public AudioClip OST;
+    public AudioClip FallingFactory;
+
+    public AudioClip FallingTreeSound;
     Camera cam;
 
-    Ray ray;
+    
     RaycastHit hitData;
 
     // Start is called before the first frame update
@@ -27,7 +31,10 @@ public class GrowTrees : MonoBehaviour
         cam = GOCamera;
         // IstanciatedFactories = new List<GameObject>();
         Co2_1.value = Co2_0.value = startingCo2Value;
-        FactorySlider.value = Factories.Count;
+        FactorySlider.value = IstanciatedFactories.Count;
+        AudioSource ost = this.transform.parent.gameObject.AddComponent<AudioSource>();
+        ost.loop = true;
+        ost.PlayOneShot(OST);
 
     }
 
@@ -53,10 +60,11 @@ public class GrowTrees : MonoBehaviour
                 GameObject tree = GameObject.Instantiate(Trees[treeIdx]);
                 tree.transform.localScale = .1f * Vector3.one;
                 tree.transform.position = TreePos;
+                tree.transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
                 tree.transform.parent = this.transform.parent;
+                AudioSource treeAudio = tree.AddComponent<AudioSource>();
                 
-                
-
+                treeAudio.PlayOneShot(FallingTreeSound);
                 TreesInstaciated.Add(tree);
 
             }
@@ -71,6 +79,7 @@ public class GrowTrees : MonoBehaviour
                 t.transform.localScale = t.transform.localScale + (Vector3.one * Time.deltaTime * GrowSpeed);
             }
             else {
+                
                 AdultTrees.Add(j);
             }
             j += 1;
@@ -78,12 +87,41 @@ public class GrowTrees : MonoBehaviour
         AdultTrees.Reverse();
         foreach (var k in AdultTrees)
             TreesInstaciated.RemoveAt(k);
-
         balanceSystem();
-    }
+        j = 0;
+        List<int> stableFactories = new List<int>();
+        foreach (var f in FallingFactories)
+        {
+            RaycastHit hit;
+
+            if (Physics.Raycast(f.transform.position, Vector3.down, out hit)){
+
+                if (f.transform.position.y > hit.point.y-.5f)
+                {
+                    f.transform.Translate(Vector3.down * Time.deltaTime * FallingSpeed);
+                }
+                else
+                {
+                    f.GetComponent<AudioSource>().PlayOneShot(FallingFactory);
+                    stableFactories.Add(j);
+                }
+            }
+            j += 1;
+        }
+        stableFactories.Reverse();
+        foreach(var f in stableFactories)
+        {
+
+            FallingFactories[FallingFactories.IndexOf(FallingFactories[f])].transform.SetParent(this.transform.parent.transform);
+            
+            IstanciatedFactories.Add(FallingFactories[FallingFactories.IndexOf(FallingFactories[f])]);
+            FallingFactories.RemoveAt(f);
+        }
+}
 
     public List<GameObject> Factories;
     public List<GameObject> IstanciatedFactories;
+    public List<GameObject> FallingFactories;
     public float Co2produced = 2f;
     public float TreeCo2Capacity = 2;
     public Slider FactorySlider;
@@ -107,18 +145,35 @@ public class GrowTrees : MonoBehaviour
         Debug.Log(EnergyDemand.value.ToString()+"Energy, there are"
             +IstanciatedFactories.Count.ToString()+"REsources,each produces"+ Co2produced * EnergyPerCo2Produced + "energy"+
             "for a total of"+ (IstanciatedFactories.Count * Co2produced * EnergyPerCo2Produced).ToString());
-        if (EnergyDemand.value > IstanciatedFactories.Count * Co2produced* EnergyPerCo2Produced)
+        if (EnergyDemand.value > (IstanciatedFactories.Count+ FallingFactories.Count) * Co2produced* EnergyPerCo2Produced)
         {
             
-            GameObject newFact = GameObject.Instantiate(IstanciatedFactories[0], this.transform);
-            newFact.transform.position=new Vector3(Random.Range(-this.transform.lossyScale.x/2, this.transform.lossyScale.x/ 2),
-                                                       0,
-                                                    Random.Range(-this.transform.lossyScale.z / 2, this.transform.lossyScale.z / 2));
-            IstanciatedFactories.Add(newFact);
+            GameObject newFact = GameObject.Instantiate(Factories[0]);
+            float r2, x2, z2,theta2;
+            r2 = Radius * Random.Range(0.2f, .999f);
+            theta2 = 2 * Mathf.PI * Random.Range(0.2f, .999f);
+            x2 = r2 * Mathf.Cos(theta2);
+            z2 = r2 * Mathf.Sin(theta2);
+            Vector3 xyFabricPosition = new Vector3(x2, 10, z2);
+            newFact.transform.position = xyFabricPosition;
+            RaycastHit hit;
+            
+            if (Physics.Raycast(xyFabricPosition,Vector3.down, out hit)){
+                newFact.transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
+            }
+            newFact.transform.SetParent(this.transform.parent);
+            newFact.AddComponent<AudioSource>();
+            FallingFactories.Add(newFact);
+            //IstanciatedFactories.Add(newFact);
             FactorySlider.value += 1;
+            Debug.Log("newFactory");
 
         }
 
+    }
+    private void OnDrawGizmos()
+    {
+        Gizmos.DrawWireCube(this.transform.position, Radius*Vector3.one);
     }
 
 }
