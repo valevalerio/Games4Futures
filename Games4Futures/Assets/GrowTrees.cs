@@ -1,18 +1,21 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using UnityEngine.UI;
 public class GrowTrees : MonoBehaviour
 {
     public float maxScale = 2;
     public float GrowSpeed = 30;
+    public float startingCo2Value = 2;
+    public float Co2value = 0;
+    
     public Camera GOCamera;
     // modelli standard
     public List<GameObject> Trees;
     //modelli già istanziati
     public List<GameObject> TreesInstaciated;
+  
     
-
     Camera cam;
 
     Ray ray;
@@ -22,7 +25,10 @@ public class GrowTrees : MonoBehaviour
     void Start()
     {
         cam = GOCamera;
-        
+        // IstanciatedFactories = new List<GameObject>();
+        Co2_1.value = Co2_0.value = startingCo2Value;
+        FactorySlider.value = Factories.Count;
+
     }
 
     // Update is called once per frame
@@ -30,7 +36,7 @@ public class GrowTrees : MonoBehaviour
     {
         Vector3 mousePos = Input.mousePosition;
         mousePos.z = Camera.main.nearClipPlane;
-  
+        this.transform.parent.transform.Rotate(Vector3.up*Time.deltaTime*2);
 
         if (Input.GetMouseButtonDown(0))
         {
@@ -47,7 +53,8 @@ public class GrowTrees : MonoBehaviour
                 GameObject tree = GameObject.Instantiate(Trees[treeIdx]);
                 tree.transform.localScale = .1f * Vector3.one;
                 tree.transform.position = TreePos;
-
+                tree.transform.parent = this.transform.parent;
+                
                 
 
                 TreesInstaciated.Add(tree);
@@ -58,7 +65,7 @@ public class GrowTrees : MonoBehaviour
         int j = 0;
         foreach (var t in TreesInstaciated)
         {
-            Debug.Log(t.transform.localScale.x);
+            
             if (t.transform.localScale.x <= maxScale)
             {
                 t.transform.localScale = t.transform.localScale + (Vector3.one * Time.deltaTime * GrowSpeed);
@@ -72,6 +79,46 @@ public class GrowTrees : MonoBehaviour
         foreach (var k in AdultTrees)
             TreesInstaciated.RemoveAt(k);
 
+        balanceSystem();
+    }
+
+    public List<GameObject> Factories;
+    public List<GameObject> IstanciatedFactories;
+    public float Co2produced = 2f;
+    public float TreeCo2Capacity = 2;
+    public Slider FactorySlider;
+    public Slider Co2_0;
+    public float noisePerc = 0.1f;
+    public Slider Co2_1;
+
+    public Slider EnergyDemand;
+    public float noiseOnDemand=0.1f;
+    public float EnergyPerCo2Produced = 10f;
+    // Update is called once per frame
+    void balanceSystem()
+    {
+
+        EnergyDemand.value += 1*Time.deltaTime + Time.deltaTime * (noiseOnDemand * EnergyDemand.maxValue) * Mathf.Sin(Time.timeSinceLevelLoad);
+        Co2_0.value += ( IstanciatedFactories.Count * Co2produced+
+                                    -TreesInstaciated.Count*TreeCo2Capacity);
+        //Time.deltaTime*(noisePerc*Co2_0.maxValue)*Mathf.Cos(Time.timeSinceLevelLoad) 
+        Co2_1.value = Co2_0.value;
+        Co2value = Co2_1.value;
+        Debug.Log(EnergyDemand.value.ToString()+"Energy, there are"
+            +IstanciatedFactories.Count.ToString()+"REsources,each produces"+ Co2produced * EnergyPerCo2Produced + "energy"+
+            "for a total of"+ (IstanciatedFactories.Count * Co2produced * EnergyPerCo2Produced).ToString());
+        if (EnergyDemand.value > IstanciatedFactories.Count * Co2produced* EnergyPerCo2Produced)
+        {
+            
+            GameObject newFact = GameObject.Instantiate(IstanciatedFactories[0], this.transform);
+            newFact.transform.position=new Vector3(Random.Range(-this.transform.lossyScale.x/2, this.transform.lossyScale.x/ 2),
+                                                       0,
+                                                    Random.Range(-this.transform.lossyScale.z / 2, this.transform.lossyScale.z / 2));
+            IstanciatedFactories.Add(newFact);
+            FactorySlider.value += 1;
+
+        }
 
     }
+
 }
