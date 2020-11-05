@@ -15,6 +15,7 @@ public class GrowTrees : MonoBehaviour
     public List<GameObject> Trees;
     //modelli già istanziati
     public List<GameObject> TreesInstaciated;
+    private List<GameObject> FixedTrees;
 
     public AudioClip OST;
     public AudioClip FallingFactory;
@@ -22,7 +23,7 @@ public class GrowTrees : MonoBehaviour
     public AudioClip FallingTreeSound;
     Camera cam;
 
-    
+    private List<Vector3> SpownPoints;
     RaycastHit hitData;
 
     // Start is called before the first frame update
@@ -35,6 +36,9 @@ public class GrowTrees : MonoBehaviour
         AudioSource ost = this.transform.parent.gameObject.AddComponent<AudioSource>();
         ost.loop = true;
         ost.PlayOneShot(OST);
+        SpownPoints = new List<Vector3>();
+        FixedTrees = new List<GameObject>();
+        GetPointsInCircle();
 
     }
 
@@ -49,7 +53,7 @@ public class GrowTrees : MonoBehaviour
         {
             
             Ray ray = cam.ScreenPointToRay(mousePos);
-            Debug.DrawRay(ray.origin, ray.direction * 10, Color.yellow);
+            
             RaycastHit hit;
             //var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray,out hit))
@@ -57,15 +61,19 @@ public class GrowTrees : MonoBehaviour
 
                 int treeIdx = Random.Range(0, Trees.Count);
                 Vector3 TreePos = hit.point;
-                GameObject tree = GameObject.Instantiate(Trees[treeIdx]);
-                tree.transform.localScale = .1f * Vector3.one;
-                tree.transform.position = TreePos;
-                tree.transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
-                tree.transform.parent = this.transform.parent;
-                AudioSource treeAudio = tree.AddComponent<AudioSource>();
                 
-                treeAudio.PlayOneShot(FallingTreeSound);
-                TreesInstaciated.Add(tree);
+                if (ClosestTree(TreePos) > 4 && ClosestFactory(TreePos) > 6)
+                {
+                    GameObject tree = GameObject.Instantiate(Trees[treeIdx]);
+                    tree.transform.localScale = .1f * Vector3.one;
+                    tree.transform.position = TreePos;
+                    tree.transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
+                    tree.transform.parent = this.transform.parent;
+                    AudioSource treeAudio = tree.AddComponent<AudioSource>();
+
+                    treeAudio.PlayOneShot(FallingTreeSound);
+                    TreesInstaciated.Add(tree);
+                }
 
             }
         }
@@ -81,6 +89,7 @@ public class GrowTrees : MonoBehaviour
             else {
                 
                 AdultTrees.Add(j);
+                FixedTrees.Add(t);
             }
             j += 1;
         }
@@ -96,22 +105,24 @@ public class GrowTrees : MonoBehaviour
 
             if (Physics.Raycast(f.transform.position, Vector3.down, out hit)){
 
-                if (f.transform.position.y > hit.point.y-.5f)
+                if (f.transform.position.y > hit.point.y - .5f)
                 {
                     f.transform.Translate(Vector3.down * Time.deltaTime * FallingSpeed);
                 }
-                else
-                {
-                    f.GetComponent<AudioSource>().PlayOneShot(FallingFactory);
-                    stableFactories.Add(j);
-                }
             }
+            else
+            {
+                IstanciatedFactories.Add(f);
+                stableFactories.Add(j);
+            }
+            
             j += 1;
         }
         stableFactories.Reverse();
-        Debug.Log(stableFactories);
+        
         foreach(var f in stableFactories)
         {
+            Debug.Log(f);
             FallingFactories.RemoveAt(f);
         }
 }
@@ -146,16 +157,13 @@ public class GrowTrees : MonoBehaviour
         {
             
             GameObject newFact = GameObject.Instantiate(Factories[0]);
-            float r2, x2, z2,theta2;
-            r2 = Radius * Random.Range(0.2f, .999f);
-            theta2 = 2 * Mathf.PI * Random.Range(0.2f, .999f);
-            x2 = r2 * Mathf.Cos(theta2);
-            z2 = r2 * Mathf.Sin(theta2);
-            Vector3 xyFabricPosition = new Vector3(x2, 10, z2);
-            newFact.transform.position = xyFabricPosition;
+            int rdnIdx = Random.Range(0, SpownPoints.Count - 1);
+            newFact.transform.position = SpownPoints[rdnIdx];
+            SpownPoints.RemoveAt(rdnIdx);
+
             RaycastHit hit;
             
-            if (Physics.Raycast(xyFabricPosition,Vector3.down, out hit)){
+            if (Physics.Raycast(newFact.transform.position, Vector3.down, out hit)){
                 newFact.transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
             }
             newFact.transform.SetParent(this.transform.parent);
@@ -163,7 +171,7 @@ public class GrowTrees : MonoBehaviour
             
 
             FallingFactories.Add(newFact);
-            //IstanciatedFactories.Add(newFact);
+            
             FactorySlider.value += 1;
             Debug.Log("newFactory");
 
@@ -174,5 +182,43 @@ public class GrowTrees : MonoBehaviour
     {
         Gizmos.DrawWireCube(this.transform.position, Radius*Vector3.one);
     }
+    private void GetPointsInCircle()
+    {
+        float r2, x2, z2, theta2;
+        
+        for(float i=.25f;i<1;i+=.24f){
+            for (float j = 0; j < 1; j += .15f)
+            {
+                r2 = Radius * i;
+                theta2 = 2 * Mathf.PI * j;
+                x2 = r2 * Mathf.Cos(theta2);
+                z2 = r2 * Mathf.Sin(theta2);
+                SpownPoints.Add(new Vector3(x2, 10, z2));
+                
+            }
+        }
+    }
 
+    private float ClosestTree(Vector3 position)
+    {
+        float d = 100;
+        foreach (var t in TreesInstaciated)
+        {
+            d = Mathf.Min(d, Vector3.Distance(t.transform.position, position));
+        }
+        foreach (var t in FixedTrees)
+        {
+            d = Mathf.Min(d, Vector3.Distance(t.transform.position, position));
+        }
+        return d;
+    }
+    private float ClosestFactory(Vector3 position)
+    {
+        float d = 100;
+        foreach(var f in IstanciatedFactories)
+        {
+            d = Mathf.Min(d, Vector3.Distance(f.transform.position, position));
+        }
+        return d;
+    }
 }
