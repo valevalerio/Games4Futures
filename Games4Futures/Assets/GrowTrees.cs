@@ -4,12 +4,15 @@ using UnityEngine;
 
 public class GrowTrees : MonoBehaviour
 {
+    public float maxScale = 2;
+    public float GrowSpeed = 30;
     public Camera GOCamera;
     // modelli standard
     public List<GameObject> Trees;
     //modelli già istanziati
     public List<GameObject> TreesInstaciated;
-    public float GrowSpeed=30;
+    
+
     Camera cam;
 
     Ray ray;
@@ -27,8 +30,7 @@ public class GrowTrees : MonoBehaviour
     {
         Vector3 mousePos = Input.mousePosition;
         mousePos.z = Camera.main.nearClipPlane;
-    
-        Vector3 pos = new Vector3(200, 200, 0);
+  
 
         if (Input.GetMouseButtonDown(0))
         {
@@ -57,7 +59,7 @@ public class GrowTrees : MonoBehaviour
         foreach (var t in TreesInstaciated)
         {
             Debug.Log(t.transform.localScale.x);
-            if (t.transform.localScale.x <= 1f)
+            if (t.transform.localScale.x <= maxScale)
             {
                 t.transform.localScale = t.transform.localScale + (Vector3.one * Time.deltaTime * GrowSpeed);
             }
