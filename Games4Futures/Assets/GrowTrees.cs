@@ -109,12 +109,9 @@ public class GrowTrees : MonoBehaviour
             j += 1;
         }
         stableFactories.Reverse();
+        Debug.Log(stableFactories);
         foreach(var f in stableFactories)
         {
-
-            FallingFactories[FallingFactories.IndexOf(FallingFactories[f])].transform.SetParent(this.transform.parent.transform);
-            
-            IstanciatedFactories.Add(FallingFactories[FallingFactories.IndexOf(FallingFactories[f])]);
             FallingFactories.RemoveAt(f);
         }
 }
@@ -144,7 +141,7 @@ public class GrowTrees : MonoBehaviour
         Co2value = Co2_1.value;
         Debug.Log(EnergyDemand.value.ToString()+"Energy, there are"
             +IstanciatedFactories.Count.ToString()+"REsources,each produces"+ Co2produced * EnergyPerCo2Produced + "energy"+
-            "for a total of"+ (IstanciatedFactories.Count * Co2produced * EnergyPerCo2Produced).ToString());
+            "for a total of"+ ((IstanciatedFactories.Count + FallingFactories.Count) * Co2produced * EnergyPerCo2Produced).ToString());
         if (EnergyDemand.value > (IstanciatedFactories.Count+ FallingFactories.Count) * Co2produced* EnergyPerCo2Produced)
         {
             
@@ -162,7 +159,9 @@ public class GrowTrees : MonoBehaviour
                 newFact.transform.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
             }
             newFact.transform.SetParent(this.transform.parent);
-            newFact.AddComponent<AudioSource>();
+            newFact.AddComponent<AudioSource>().PlayOneShot(FallingFactory);
+            
+
             FallingFactories.Add(newFact);
             //IstanciatedFactories.Add(newFact);
             FactorySlider.value += 1;
